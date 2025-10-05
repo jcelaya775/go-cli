@@ -7,7 +7,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "go-cli [command] [options]",
+	Use:     "go-cli",
 	Short:   "It's a CLI",
 	Long:    "It's a CLI, duh.",
 	Example: "go-cli hey Jeoff",
