@@ -108,13 +108,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.lastTick = time.Now()
 		m.remainingTick = m.tickDuration
-		//fmt.Println("Tick at", time.Time(msg))
 		return m, tea.Batch(
 			tickCmdWithDuration(m.tickDuration),
 			m.insertionSortIterator.NextCmd(),
 		)
 	case services.InsertionSortStateMsg:
-		//fmt.Println("Received InsertionSortStateMsg:", msg)
 		if msg.Done {
 			m.done = true
 			return m, tea.Quit
@@ -166,10 +164,7 @@ func (m Model) View() string {
 		s += "Running " + m.spinner.View() + "\n\n"
 	}
 
-	//fmt.Println("View Step:", m.nums, "i:", m.i, "j:", m.j, "done:", m.done, "cancelled:", m.cancelled)
 	s += m.renderNums()
-	// TODO: Debug i and j
-	//s += fmt.Printf("")
 	s += "\n\nPress space to pause/resume. Press r to restart. Press ctrl+c to quit.\n"
 	return s
 }
