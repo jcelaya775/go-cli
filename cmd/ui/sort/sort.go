@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"jcelaya775/go-cli/models"
 	"jcelaya775/go-cli/services"
 	"strconv"
 	"time"
@@ -12,6 +13,7 @@ import (
 var tickDuration time.Duration
 
 type Model struct {
+	sortingAlgorithm      models.SortingAlgorithm
 	insertionSortIterator services.InsertionSortIterator
 	nums                  []int
 	i                     int
@@ -23,12 +25,13 @@ type Model struct {
 	spinner               spinner.Model
 }
 
-func InitialModel(nums []int, tickInterval time.Duration) Model {
+func InitialModel(sortingAlgorithm models.SortingAlgorithm, nums []int, tickInterval time.Duration) Model {
 	s := spinner.New(spinner.WithSpinner(spinner.Monkey))
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
 
 	tickDuration = tickInterval
 	return Model{
+		sortingAlgorithm:      sortingAlgorithm,
 		insertionSortIterator: services.NewInsertionSortIterator(nums),
 		nums:                  nums,
 		i:                     0,
@@ -80,21 +83,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.spinner.Tick,
 				)
 			}
-		case "r":
-			// Reset the sorting
-			m.insertionSortIterator.Abort()
-			m.insertionSortIterator = services.NewInsertionSortIterator(m.nums)
-			m.i = 0
-			m.j = 1
-			m.done = false
-			m.pause = false
-			m.lastTick = time.Now()
-			m.remainingTick = tickDuration
-			return m, tea.Batch(
-				tickCmdWithDuration(tickDuration),
-				//m.insertionSortIterator.NextCmd(),
-				m.spinner.Tick,
-			)
+			//case "r":
+			//	// Reset the sorting
+			//	m.insertionSortIterator.Abort() // Clean up the old goroutine
+			//	m.insertionSortIterator = services.NewInsertionSortIterator(m.nums)
+			//	m.i = 0
+			//	m.j = 1
+			//	m.done = false
+			//	m.pause = false
+			//	m.lastTick = time.Now()
+			//	m.remainingTick = tickDuration
+			//	return m, tea.Batch(
+			//		tickCmdWithDuration(tickDuration),
+			//		m.insertionSortIterator.NextCmd(),
+			//		m.spinner.Tick,
+			//	)
 		}
 	case TickMsg:
 		if m.pause {
@@ -105,9 +108,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(
 			tickCmdWithDuration(tickDuration),
 			m.insertionSortIterator.NextCmd(),
-			m.spinner.Tick,
 		)
-	case services.InsertionSortMsg:
+	case services.InsertionSortStateMsg:
 		if msg.Done {
 			m.done = true
 			return m, tea.Quit
@@ -150,7 +152,7 @@ func (m Model) renderNums() string {
 }
 
 func (m Model) View() string {
-	s := "Insertion Sort\n\n"
+	s := models.SortingAlgorithmNames[m.sortingAlgorithm] + "\n\n"
 	if m.pause {
 		s += "Paused " + m.spinner.View() + "\n\n"
 	} else if m.done {

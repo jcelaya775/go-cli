@@ -5,75 +5,65 @@ import (
 )
 
 type InsertionSortIterator struct {
-	ch chan stateChannel
+	ch chan InsertionSortStateMsg
 }
 
-type stateChannel struct {
-	nums []int
-	i    int
-	j    int
+type InsertionSortStateMsg struct {
+	Nums      []int
+	I         int
+	J         int
+	Done      bool
+	Cancelled bool
 }
 
-func NewInsertionSortIterator(nums []int) InsertionSortIterator {
-	numsCh := make(chan stateChannel)
+func NewInsertionSortIterator(numsInput []int) InsertionSortIterator {
+	stateCh := make(chan InsertionSortStateMsg)
 
 	go func() {
-		numsCopy := make([]int, len(nums))
-		copy(numsCopy, nums)
+		nums := make([]int, len(numsInput))
 
-		n := len(numsCopy)
+		copy(nums, numsInput)
+
+		n := len(nums)
 		for i := 1; i < n; i++ {
-			// Send state when selecting new key to compare
-			currentState := make([]int, len(numsCopy))
-			copy(currentState, numsCopy)
-			numsCh <- stateChannel{
-				nums: currentState,
-				i:    i,
-				j:    i,
+			stateCh <- InsertionSortStateMsg{
+				Nums: append([]int(nil), nums...),
+				I:    i,
+				J:    i, // mark the current index being compared
 			}
 
-			for j := i - 1; j >= 0 && numsCopy[j+1] < numsCopy[j]; j-- {
-				// Swap and send state after swap
-				numsCopy[j], numsCopy[j+1] = numsCopy[j+1], numsCopy[j]
-				currentState := make([]int, len(numsCopy))
-				copy(currentState, numsCopy)
-				numsCh <- stateChannel{
-					nums: currentState,
-					i:    i + 1,
-					j:    j,
+			for j := i - 1; j >= 0 && nums[j+1] < nums[j]; j-- {
+				nums[j], nums[j+1] = nums[j+1], nums[j]
+				stateCh <- InsertionSortStateMsg{
+					Nums: append([]int(nil), nums...),
+					I:    i + 1, // include the last sorted index as part of the sorted section
+					J:    j,
 				}
 			}
 		}
-		close(numsCh)
+		close(stateCh)
 	}()
 
-	return InsertionSortIterator{numsCh}
-}
-
-type InsertionSortMsg struct {
-	Nums []int
-	I    int
-	J    int
-	Done bool
+	return InsertionSortIterator{stateCh}
 }
 
 func (it *InsertionSortIterator) NextCmd() tea.Cmd {
 	return func() tea.Msg {
 		if state, ok := <-it.ch; ok {
-			return InsertionSortMsg{
-				Nums: state.nums,
-				I:    state.i,
-				J:    state.j,
+			return InsertionSortStateMsg{
+				Nums: state.Nums,
+				I:    state.I,
+				J:    state.J,
 				Done: false,
 			}
 		} else {
-			return InsertionSortMsg{Done: true}
+			return InsertionSortStateMsg{Done: true}
 		}
 	}
 }
 
 func (it *InsertionSortIterator) Abort() {
-	// Drain the channel to stop the goroutine
 	for range it.ch {
+		// Drain the channel to stop the goroutine
 	}
 }
