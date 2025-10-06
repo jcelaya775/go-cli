@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var tickDuration int
+var tickDuration time.Duration
 
 const SortingAlgorithmFieldName = "algorithm"
 
@@ -23,7 +23,7 @@ func init() {
 	algorithmHelpText := "Sorting algorithm to use. Options:\n  - " + strings.Join(algorithmOptionsList, "\n  - ")
 	sortCmd.Flags().StringP(SortingAlgorithmFieldName, "a", "", algorithmHelpText)
 
-	sortCmd.Flags().IntVarP(&tickDuration, "tickDuration", "t", 1000, "Tick duration for sorting steps in milliseconds")
+	sortCmd.Flags().DurationVarP(&tickDuration, "tickDuration", "t", time.Second, "Tick duration for sorting steps (e.g., 500ms, 2s)")
 
 	rootCmd.AddCommand(sortCmd)
 }
@@ -33,11 +33,11 @@ var sortCmd = &cobra.Command{
 	Short: "Sort an array of numbers",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sortingAlgorithm, err := userSelectSortingAlgorithm(*cmd)
+		sortingAlgorithm, err := userSelectSortingAlgorithm(cmd)
 		if err != nil {
 			return err
 		}
-		sortModel := sort.InitialModel(sortingAlgorithm, []int{5, 2, 9, 1, 5, 6, 3, 23, 12, 5}, time.Duration(tickDuration)*time.Millisecond)
+		sortModel := sort.InitialModel(sortingAlgorithm, []int{5, 2, 9, 1, 5, 6, 3, 23, 12, 5}, tickDuration)
 		teaProgram := tea.NewProgram(sortModel)
 		if _, err := teaProgram.Run(); err != nil {
 			return err
@@ -46,7 +46,7 @@ var sortCmd = &cobra.Command{
 	},
 }
 
-func userSelectSortingAlgorithm(cmd cobra.Command) (models.SortingAlgorithm, error) {
+func userSelectSortingAlgorithm(cmd *cobra.Command) (models.SortingAlgorithm, error) {
 	sortingAlgorithmInput, err := cmd.Flags().GetString(SortingAlgorithmFieldName)
 	if err != nil {
 		return "", err
@@ -59,11 +59,11 @@ func userSelectSortingAlgorithm(cmd cobra.Command) (models.SortingAlgorithm, err
 		return models.SortingAlgorithm(sortingAlgorithmInput), nil
 	}
 
-	var sortingAlgorithm models.SortingAlgorithm
 	var sortingOptions []huh.Option[models.SortingAlgorithm]
 	for _, algorithm := range models.SortingAlgorithms {
-		sortingOptions = append(sortingOptions, huh.NewOption(string(algorithm), algorithm))
+		sortingOptions = append(sortingOptions, huh.NewOption(models.SortingAlgorithmNames[algorithm], algorithm))
 	}
+	var sortingAlgorithm models.SortingAlgorithm
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[models.SortingAlgorithm]().
