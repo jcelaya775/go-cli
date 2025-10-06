@@ -13,13 +13,15 @@ import (
 
 var tickDuration int
 
+const SortingAlgorithmFieldName = "algorithm"
+
 func init() {
 	var algorithmOptionsList []string
 	for _, alg := range models.SortingAlgorithms {
 		algorithmOptionsList = append(algorithmOptionsList, string(alg))
 	}
 	algorithmHelpText := "Sorting algorithm to use. Options:\n  - " + strings.Join(algorithmOptionsList, "\n  - ")
-	sortCmd.Flags().StringP("sortingAlgorithm", "a", "", algorithmHelpText)
+	sortCmd.Flags().StringP(SortingAlgorithmFieldName, "a", "", algorithmHelpText)
 
 	sortCmd.Flags().IntVarP(&tickDuration, "tickDuration", "t", 1000, "Tick duration for sorting steps in milliseconds")
 
@@ -45,7 +47,7 @@ var sortCmd = &cobra.Command{
 }
 
 func userSelectSortingAlgorithm(cmd cobra.Command) (models.SortingAlgorithm, error) {
-	sortingAlgorithmInput, err := cmd.Flags().GetString("sortingAlgorithm")
+	sortingAlgorithmInput, err := cmd.Flags().GetString(SortingAlgorithmFieldName)
 	if err != nil {
 		return "", err
 	}

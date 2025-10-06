@@ -1,6 +1,7 @@
 package sort
 
 import (
+	"context"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -10,8 +11,6 @@ import (
 	"time"
 )
 
-var tickDuration time.Duration
-
 type Model struct {
 	sortingAlgorithm      models.SortingAlgorithm
 	insertionSortIterator services.InsertionSortIterator
@@ -19,25 +18,31 @@ type Model struct {
 	i                     int
 	j                     int
 	done                  bool
+	cancelled             bool
 	pause                 bool
+	tickDuration          time.Duration
 	lastTick              time.Time
 	remainingTick         time.Duration
 	spinner               spinner.Model
+	ctxWithCancel         context.Context
+	cancel                context.CancelFunc
 }
 
 func InitialModel(sortingAlgorithm models.SortingAlgorithm, nums []int, tickInterval time.Duration) Model {
 	s := spinner.New(spinner.WithSpinner(spinner.Monkey))
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
-
-	tickDuration = tickInterval
+	ctxWithCancel, cancel := context.WithCancel(context.Background())
 	return Model{
 		sortingAlgorithm:      sortingAlgorithm,
-		insertionSortIterator: services.NewInsertionSortIterator(nums),
+		insertionSortIterator: services.NewInsertionSortIterator(ctxWithCancel, nums),
+		ctxWithCancel:         ctxWithCancel,
+		cancel:                cancel,
 		nums:                  nums,
 		i:                     0,
 		j:                     1,
 		done:                  false,
 		pause:                 false,
+		tickDuration:          tickInterval,
 		lastTick:              time.Now(),
 		remainingTick:         tickInterval,
 		spinner:               s,
@@ -54,9 +59,9 @@ func tickCmdWithDuration(d time.Duration) tea.Cmd {
 
 func (m Model) Init() tea.Cmd {
 	m.lastTick = time.Now()
-	m.remainingTick = tickDuration
+	m.remainingTick = m.tickDuration
 	return tea.Batch(
-		tickCmdWithDuration(tickDuration),
+		tickCmdWithDuration(m.tickDuration),
 		m.spinner.Tick,
 		m.insertionSortIterator.NextCmd(),
 	)
@@ -71,7 +76,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case " ":
 			m.pause = !m.pause
 			if m.pause {
-				m.remainingTick = tickDuration - time.Since(m.lastTick)
+				m.remainingTick = m.tickDuration - time.Since(m.lastTick)
 				if m.remainingTick < 0 {
 					m.remainingTick = 0
 				}
@@ -83,36 +88,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.spinner.Tick,
 				)
 			}
-			//case "r":
-			//	// Reset the sorting
-			//	m.insertionSortIterator.Abort() // Clean up the old goroutine
-			//	m.insertionSortIterator = services.NewInsertionSortIterator(m.nums)
-			//	m.i = 0
-			//	m.j = 1
-			//	m.done = false
-			//	m.pause = false
-			//	m.lastTick = time.Now()
-			//	m.remainingTick = tickDuration
-			//	return m, tea.Batch(
-			//		tickCmdWithDuration(tickDuration),
-			//		m.insertionSortIterator.NextCmd(),
-			//		m.spinner.Tick,
-			//	)
+		case "r":
+			// Reset the sorting
+			//m.insertionSortIterator.Abort() // Clean up the old goroutine
+			m.cancel()
+			//m.insertionSortIterator = services.NewInsertionSortIterator(m.nums)
+			//m.i = 0
+			//m.j = 1
+			//m.done = false
+			//m.pause = false
+			//m.lastTick = time.Now()
+			//m.remainingTick = m.tickDuration
+			//return m, tea.Batch(
+			//	tickCmdWithDuration(m.tickDuration),
+			//	m.insertionSortIterator.NextCmd(),
+			//	m.spinner.Tick,
+			//)
+			return m, nil
 		}
 	case TickMsg:
 		if m.pause {
 			return m, nil
 		}
 		m.lastTick = time.Now()
-		m.remainingTick = tickDuration
+		m.remainingTick = m.tickDuration
+		//fmt.Println("Tick at", time.Time(msg))
 		return m, tea.Batch(
-			tickCmdWithDuration(tickDuration),
+			tickCmdWithDuration(m.tickDuration),
 			m.insertionSortIterator.NextCmd(),
 		)
 	case services.InsertionSortStateMsg:
+		//fmt.Println("Received InsertionSortStateMsg:", msg)
 		if msg.Done {
 			m.done = true
 			return m, tea.Quit
+		} else if msg.Cancelled {
+			return m, nil
 		}
 		m.nums = msg.Nums
 		m.i = msg.I
@@ -161,7 +172,10 @@ func (m Model) View() string {
 		s += "Running " + m.spinner.View() + "\n\n"
 	}
 
+	//fmt.Println("View Step:", m.nums, "i:", m.i, "j:", m.j, "done:", m.done, "cancelled:", m.cancelled)
 	s += m.renderNums()
+	// TODO: Debug i and j
+	//s += fmt.Printf("")
 	s += "\n\nPress space to pause/resume. Press ctrl+c to quit.\n"
 	return s
 }
