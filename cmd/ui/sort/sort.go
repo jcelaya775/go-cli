@@ -13,7 +13,7 @@ import (
 
 type Model struct {
 	sortingAlgorithm      models.SortingAlgorithm
-	insertionSortIterator services.InsertionSortIterator
+	insertionSortIterator *services.InsertionSortIterator
 	nums                  []int
 	i                     int
 	j                     int
@@ -28,7 +28,11 @@ type Model struct {
 	cancel                context.CancelFunc
 }
 
+var originalNums []int
+
 func InitialModel(sortingAlgorithm models.SortingAlgorithm, nums []int, tickInterval time.Duration) Model {
+	originalNums = append([]int(nil), nums...)
+
 	s := spinner.New(spinner.WithSpinner(spinner.Monkey))
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
 	ctxWithCancel, cancel := context.WithCancel(context.Background())
@@ -89,22 +93,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 			}
 		case "r":
-			// Reset the sorting
-			//m.insertionSortIterator.Abort() // Clean up the old goroutine
 			m.cancel()
-			//m.insertionSortIterator = services.NewInsertionSortIterator(m.nums)
-			//m.i = 0
-			//m.j = 1
-			//m.done = false
-			//m.pause = false
-			//m.lastTick = time.Now()
-			//m.remainingTick = m.tickDuration
-			//return m, tea.Batch(
-			//	tickCmdWithDuration(m.tickDuration),
-			//	m.insertionSortIterator.NextCmd(),
-			//	m.spinner.Tick,
-			//)
 			return m, nil
+			//newModel := InitialModel(m.sortingAlgorithm, originalNums, m.tickDuration)
+			//return newModel, tea.Batch(
+			//	tickCmdWithDuration(newModel.tickDuration),
+			//	newModel.spinner.Tick,
+			//	newModel.insertionSortIterator.NextCmd(),
+			//)
 		}
 	case TickMsg:
 		if m.pause {
@@ -122,8 +118,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Done {
 			m.done = true
 			return m, tea.Quit
-		} else if msg.Cancelled {
-			return m, nil
 		}
 		m.nums = msg.Nums
 		m.i = msg.I
@@ -176,6 +170,6 @@ func (m Model) View() string {
 	s += m.renderNums()
 	// TODO: Debug i and j
 	//s += fmt.Printf("")
-	s += "\n\nPress space to pause/resume. Press ctrl+c to quit.\n"
+	s += "\n\nPress space to pause/resume. Press r to restart. Press ctrl+c to quit.\n"
 	return s
 }

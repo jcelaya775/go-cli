@@ -6,98 +6,81 @@ import (
 )
 
 type InsertionSortIterator struct {
-	ch chan InsertionSortStateMsg
+	stateMsgCh chan InsertionSortStateMsg
+	cancelled  bool
 }
 
 type InsertionSortStateMsg struct {
-	Nums      []int
-	I         int
-	J         int
-	Done      bool
-	Cancelled bool
+	Nums    []int
+	I       int
+	J       int
+	Done    bool
+	Restart bool
 }
 
-func NewInsertionSortIterator(ctx context.Context, numsInput []int) InsertionSortIterator {
-	stateCh := make(chan InsertionSortStateMsg)
+func NewInsertionSortIterator(ctx context.Context, nums []int) *InsertionSortIterator {
+	it := &InsertionSortIterator{stateMsgCh: make(chan InsertionSortStateMsg), cancelled: false}
+	go it.awaitSortSteps(ctx, append([]int(nil), nums...))
+	return it
+}
 
-	go func() {
-		nums := make([]int, len(numsInput))
-		copy(nums, numsInput)
-
-		n := len(nums)
-		for i := 1; i < n; i++ {
-			select {
-			case <-ctx.Done():
-				stateCh <- InsertionSortStateMsg{
-					Nums:      append([]int(nil), nums...),
-					I:         i,
-					J:         i,
-					Done:      false,
-					Cancelled: true,
-				}
-				//close(stateCh)
-				return
-			case stateCh <- InsertionSortStateMsg{
+func (it *InsertionSortIterator) awaitSortSteps(ctx context.Context, nums []int) {
+	n := len(nums)
+	for i := 1; i < n; i++ {
+		select {
+		case <-ctx.Done():
+			it.cancelled = true
+			close(it.stateMsgCh)
+			return
+		default:
+			it.stateMsgCh <- InsertionSortStateMsg{
 				Nums: append([]int(nil), nums...),
 				I:    i,
 				J:    i, // mark the current index being compared
-			}:
-				// sent successfully
-			}
-
-			for j := i - 1; j >= 0 && nums[j+1] < nums[j]; j-- {
-				nums[j], nums[j+1] = nums[j+1], nums[j]
-
-				select {
-				case <-ctx.Done():
-					stateCh <- InsertionSortStateMsg{
-						Nums:      append([]int(nil), nums...),
-						I:         i,
-						J:         j,
-						Done:      false,
-						Cancelled: true,
-					}
-					//close(stateCh)
-					return
-				case stateCh <- InsertionSortStateMsg{
-					Nums: append([]int(nil), nums...),
-					I:    i + 1, // include the last sorted index as part of the sorted portion
-					J:    j,
-				}:
-					// sent successfully
-				}
 			}
 		}
 
-		close(stateCh)
-	}()
+		for j := i - 1; j >= 0 && nums[j+1] < nums[j]; j-- {
+			nums[j], nums[j+1] = nums[j+1], nums[j]
 
-	return InsertionSortIterator{stateCh}
+			select {
+			case <-ctx.Done():
+				it.cancelled = true
+				close(it.stateMsgCh)
+				return
+			default:
+				it.stateMsgCh <- InsertionSortStateMsg{
+					Nums: append([]int(nil), nums...),
+					I:    i + 1, // include the last sorted index as part of the sorted portion
+					J:    j,
+				}
+			}
+		}
+	}
+
+	close(it.stateMsgCh)
 }
 
 func (it *InsertionSortIterator) NextCmd() tea.Cmd {
 	return func() tea.Msg {
-		if state, ok := <-it.ch; ok {
+		if state, ok := <-it.stateMsgCh; ok {
 			//fmt.Println("NextCmd Step:", state.Nums, "i:", state.I, "j:", state.J, "done:", state.Done, "cancelled:", state.Cancelled)
-			if state.Cancelled {
-				//close(it.ch)
-				return InsertionSortStateMsg{Done: false, Cancelled: true}
-			} else {
-				return InsertionSortStateMsg{
-					Nums: state.Nums,
-					I:    state.I,
-					J:    state.J,
-					Done: false,
-				}
+			return InsertionSortStateMsg{
+				Nums: state.Nums,
+				I:    state.I,
+				J:    state.J,
+				Done: false,
 			}
 		} else {
-			return InsertionSortStateMsg{Done: true}
+			if it.cancelled {
+				return InsertionSortStateMsg{Done: false, Restart: true}
+			} else {
+				return InsertionSortStateMsg{Done: true}
+			}
 		}
 	}
 }
 
-//func (it *InsertionSortIterator) Abort() {
-//	for range it.ch {
-//		// Drain the channel to stop the goroutine
-//	}
-//}
+func (it *InsertionSortIterator) Cancel() {
+	it.cancelled = true
+}
