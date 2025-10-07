@@ -7,6 +7,8 @@ import (
 
 type InsertionSortIterator struct {
 	stateMsgCh chan InsertionSortStateMsg
+	nextCh     chan InsertionSortStateMsg
+	cancelCh   chan int
 	cancelled  bool
 }
 
@@ -61,10 +63,27 @@ func (it *InsertionSortIterator) awaitSortSteps(ctx context.Context, nums []int)
 	close(it.stateMsgCh)
 }
 
+// TODO: Look into iter.Pull implementation, it might be a better fit for this use case than channels
+func (it *InsertionSortIterator) listenToStateChannel() {
+	for {
+		if state, ok := <-it.stateMsgCh; ok {
+			it.nextCh <- state
+		} else {
+			if it.cancelled {
+				return InsertionSortStateMsg{
+					Restart: true,
+				}
+			} else {
+				it.nextCh <- state
+			}
+		}
+	}
+}
+
+// TODO: Implement fan-out pattern to allow sending NextCmd and Cancel messages without blocking
 func (it *InsertionSortIterator) NextCmd() tea.Cmd {
 	return func() tea.Msg {
 		if state, ok := <-it.stateMsgCh; ok {
-			//fmt.Println("NextCmd Step:", state.Nums, "i:", state.I, "j:", state.J, "done:", state.Done, "cancelled:", state.Cancelled)
 			return InsertionSortStateMsg{
 				Nums: state.Nums,
 				I:    state.I,
