@@ -64,12 +64,14 @@ func (it *InsertionSortIterator) awaitSortSteps(ctx context.Context, nums []int)
 }
 
 // TODO: Look into iter.Pull implementation, it might be a better fit for this use case than channels
-func (it *InsertionSortIterator) listenToStateChannel() {
+func (it *InsertionSortIterator) ListenToStateUpdates() tea.Msg {
 	for {
 		if state, ok := <-it.stateMsgCh; ok {
+			// Allow NextCmd to proceed
 			it.nextCh <- state
 		} else {
 			if it.cancelled {
+				// If cancelled, immediately send a Restart message to reset the state
 				return InsertionSortStateMsg{
 					Restart: true,
 				}
@@ -83,7 +85,7 @@ func (it *InsertionSortIterator) listenToStateChannel() {
 // TODO: Implement fan-out pattern to allow sending NextCmd and Cancel messages without blocking
 func (it *InsertionSortIterator) NextCmd() tea.Cmd {
 	return func() tea.Msg {
-		if state, ok := <-it.stateMsgCh; ok {
+		if state, ok := <-it.nextCh; ok {
 			return InsertionSortStateMsg{
 				Nums: state.Nums,
 				I:    state.I,

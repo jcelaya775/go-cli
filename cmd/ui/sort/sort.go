@@ -94,7 +94,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			m.cancel()
-			return m, nil
+			//return m, nil
 			//newModel := InitialModel(m.sortingAlgorithm, originalNums, m.tickDuration)
 			//return newModel, tea.Batch(
 			//	tickCmdWithDuration(newModel.tickDuration),
