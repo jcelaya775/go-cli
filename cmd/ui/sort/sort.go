@@ -148,11 +148,16 @@ func (m Model) renderNums() string {
 	var suffixColor, prefixColor lipgloss.TerminalColor
 	switch m.sortingAlgorithm {
 	case models.BubbleSort:
-		suffixColor = lipgloss.Color(OrangeColor)
 		prefixColor = lipgloss.Color(GreenColor)
-	case models.InsertionSort:
+		suffixColor = lipgloss.Color(OrangeColor)
+	case models.SelectionSort:
 		suffixColor = lipgloss.Color(GreenColor)
 		prefixColor = lipgloss.Color(OrangeColor)
+	case models.InsertionSort:
+		fallthrough
+	default:
+		prefixColor = lipgloss.Color(OrangeColor)
+		suffixColor = lipgloss.Color(GreenColor)
 	}
 
 	for i, num := range m.nums {
