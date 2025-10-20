@@ -6,51 +6,58 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"jcelaya775/go-cli/models"
-	"jcelaya775/go-cli/services"
+	"jcelaya775/go-cli/services/sorting"
 	"strconv"
 	"time"
 )
 
 type Model struct {
-	sortingAlgorithm      models.SortingAlgorithm
-	insertionSortIterator *services.InsertionSortIterator
-	nums                  []int
-	i                     int
-	j                     int
-	done                  bool
-	cancelled             bool
-	pause                 bool
-	tickDuration          time.Duration
-	lastTick              time.Time
-	remainingTick         time.Duration
-	spinner               spinner.Model
-	ctxWithCancel         context.Context
-	cancel                context.CancelFunc
+	sortingAlgorithm models.SortingAlgorithm
+	sortingIt        models.SortingAlgorithmIterator
+	sortingItFactory sorting.SortingAlgorithmIteratorFactory
+	nums             []int
+	i                int
+	j                int
+	done             bool
+	cancelled        bool
+	pause            bool
+	tickDuration     time.Duration
+	lastTick         time.Time
+	remainingTick    time.Duration
+	spinner          spinner.Model
+	ctxWithCancel    context.Context
+	cancel           context.CancelFunc
 }
 
-var originalNums []int
-
-func InitialModel(sortingAlgorithm models.SortingAlgorithm, nums []int, tickInterval time.Duration) Model {
-	originalNums = append([]int(nil), nums...)
-
-	s := spinner.New(spinner.WithSpinner(spinner.Monkey))
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
-	ctxWithCancel, cancel := context.WithCancel(context.Background())
-	return Model{
-		sortingAlgorithm:      sortingAlgorithm,
-		insertionSortIterator: services.NewInsertionSortIterator(ctxWithCancel, nums),
-		ctxWithCancel:         ctxWithCancel,
-		cancel:                cancel,
-		nums:                  nums,
-		i:                     0,
-		j:                     1,
-		done:                  false,
-		pause:                 false,
-		tickDuration:          tickInterval,
-		lastTick:              time.Now(),
-		remainingTick:         tickInterval,
-		spinner:               s,
+func InitialModel(sortingAlgorithm models.SortingAlgorithm, nums []int, tickInterval time.Duration) (Model, error) {
+	sortingItFactory, err := sorting.GetIteratorFactory(sortingAlgorithm)
+	if err != nil {
+		return Model{}, err
 	}
+	ctxWithCancel, cancel := context.WithCancel(context.Background())
+	sortingIt := sortingItFactory.New(ctxWithCancel, nums)
+
+	s := spinner.New(
+		spinner.WithSpinner(spinner.Monkey),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))),
+	)
+
+	return Model{
+		sortingAlgorithm: sortingAlgorithm,
+		sortingIt:        sortingIt,
+		sortingItFactory: sortingItFactory,
+		ctxWithCancel:    ctxWithCancel,
+		cancel:           cancel,
+		nums:             nums,
+		i:                0,
+		j:                1,
+		done:             false,
+		pause:            false,
+		tickDuration:     tickInterval,
+		lastTick:         time.Now(),
+		remainingTick:    tickInterval,
+		spinner:          s,
+	}, nil
 }
 
 type TickMsg time.Time
@@ -67,7 +74,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		tickCmdWithDuration(m.tickDuration),
 		m.spinner.Tick,
-		m.insertionSortIterator.NextCmd(),
+		m.sortingIt.NextCmd(),
 	)
 }
 
@@ -92,15 +99,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.spinner.Tick,
 				)
 			}
-		case "r":
-			m.cancel()
-			//return m, nil
-			//newModel := InitialModel(m.sortingAlgorithm, originalNums, m.tickDuration)
-			//return newModel, tea.Batch(
-			//	tickCmdWithDuration(newModel.tickDuration),
-			//	newModel.spinner.Tick,
-			//	newModel.insertionSortIterator.NextCmd(),
-			//)
 		}
 	case TickMsg:
 		if m.pause {
@@ -110,13 +108,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.remainingTick = m.tickDuration
 		return m, tea.Batch(
 			tickCmdWithDuration(m.tickDuration),
-			m.insertionSortIterator.NextCmd(),
+			m.sortingIt.NextCmd(),
 		)
-	case services.InsertionSortStateMsg:
+	case models.SortingStateMsg:
 		if msg.Done {
 			m.done = true
 			return m, tea.Quit
 		}
+
 		m.nums = msg.Nums
 		m.i = msg.I
 		m.j = msg.J
@@ -165,6 +164,6 @@ func (m Model) View() string {
 	}
 
 	s += m.renderNums()
-	s += "\n\nPress space to pause/resume. Press r to restart. Press ctrl+c to quit.\n"
+	s += "\n\nPress space to pause/resume. Press ctrl+c to quit.\n"
 	return s
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"jcelaya775/go-cli/cmd/ui/sort"
 	"jcelaya775/go-cli/models"
+	"jcelaya775/go-cli/services/sorting"
 	"strings"
 	"time"
 )
@@ -33,11 +34,14 @@ var sortCmd = &cobra.Command{
 	Short: "Sort an array of numbers",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sortingAlgorithm, err := userSelectSortingAlgorithm(cmd)
+		sortingAlgorithm, err := getSortingAlgorithm(cmd)
 		if err != nil {
 			return err
 		}
-		sortModel := sort.InitialModel(sortingAlgorithm, []int{5, 2, 9, 1, 5, 6, 3, 23, 12, 5}, tickDuration)
+		sortModel, err := sort.InitialModel(sortingAlgorithm, []int{5, 2, 9, 1, 5, 6, 3, 23, 12, 5}, tickDuration)
+		if err != nil {
+			return err
+		}
 		teaProgram := tea.NewProgram(sortModel)
 		if _, err := teaProgram.Run(); err != nil {
 			return err
@@ -46,14 +50,14 @@ var sortCmd = &cobra.Command{
 	},
 }
 
-func userSelectSortingAlgorithm(cmd *cobra.Command) (models.SortingAlgorithm, error) {
+func getSortingAlgorithm(cmd *cobra.Command) (models.SortingAlgorithm, error) {
 	sortingAlgorithmInput, err := cmd.Flags().GetString(SortingAlgorithmFieldName)
 	if err != nil {
 		return "", err
 	}
 
 	if sortingAlgorithmInput != "" {
-		if !models.IsValidSortingAlgorithm(sortingAlgorithmInput) {
+		if !sorting.IsValidSortingAlgorithm(sortingAlgorithmInput) {
 			return "", fmt.Errorf("invalid sorting algorithm: %s", sortingAlgorithmInput)
 		}
 		return models.SortingAlgorithm(sortingAlgorithmInput), nil

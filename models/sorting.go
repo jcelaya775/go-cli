@@ -2,7 +2,6 @@ package models
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"slices"
 )
 
 type SortingAlgorithm string
@@ -30,9 +29,12 @@ var SortingAlgorithms = []SortingAlgorithm{
 
 type SortingAlgorithmIterator interface {
 	NextCmd() tea.Cmd
-	Abort()
 }
 
-func IsValidSortingAlgorithm(algorithm string) bool {
-	return slices.Contains(SortingAlgorithms, SortingAlgorithm(algorithm))
+type SortingStateMsg struct {
+	Nums    []int
+	I       int
+	J       int
+	Done    bool
+	Restart bool
 }
