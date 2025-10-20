@@ -18,6 +18,8 @@ func GetIteratorFactory(algorithm models.SortingAlgorithm) (IteratorFactory, err
 		return BubbleSortIteratorFactory{}, nil
 	case models.SelectionSort:
 		return SelectionSortIteratorFactory{}, nil
+	case models.MergeSort:
+		return MergeSortIteratorFactory{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported sorting algorithm: %s", algorithm)
 	}
