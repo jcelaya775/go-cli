@@ -14,7 +14,7 @@ import (
 
 var tickDuration time.Duration
 
-const SortingAlgorithmFieldName = "algorithm"
+const SortingAlgorithmFlag = "algorithm"
 
 func init() {
 	var algorithmOptionsList []string
@@ -22,7 +22,7 @@ func init() {
 		algorithmOptionsList = append(algorithmOptionsList, string(alg))
 	}
 	algorithmHelpText := "Sorting algorithm to use. Options:\n  - " + strings.Join(algorithmOptionsList, "\n  - ")
-	sortCmd.Flags().StringP(SortingAlgorithmFieldName, "a", "", algorithmHelpText)
+	sortCmd.Flags().StringP(SortingAlgorithmFlag, "a", "", algorithmHelpText)
 
 	sortCmd.Flags().DurationVarP(&tickDuration, "tickDuration", "t", time.Second, "Tick duration for sorting steps (e.g., 500ms, 2s)")
 
@@ -51,7 +51,7 @@ var sortCmd = &cobra.Command{
 }
 
 func getSortingAlgorithm(cmd *cobra.Command) (models.SortingAlgorithm, error) {
-	sortingAlgorithmInput, err := cmd.Flags().GetString(SortingAlgorithmFieldName)
+	sortingAlgorithmInput, err := cmd.Flags().GetString(SortingAlgorithmFlag)
 	if err != nil {
 		return "", err
 	}

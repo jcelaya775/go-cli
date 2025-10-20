@@ -14,7 +14,7 @@ import (
 type Model struct {
 	sortingAlgorithm models.SortingAlgorithm
 	sortingIt        models.SortingAlgorithmIterator
-	sortingItFactory sorting.SortingAlgorithmIteratorFactory
+	sortingItFactory sorting.IteratorFactory
 	nums             []int
 	i                int
 	j                int

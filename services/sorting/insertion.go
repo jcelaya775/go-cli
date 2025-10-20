@@ -8,23 +8,22 @@ import (
 
 type InsertionSortIterator struct {
 	stateMsgCh chan models.SortingStateMsg
-	cancelled  bool
+	ctx        context.Context
 }
 
 type InsertionSortingIteratorFactory struct{}
 
 func (_ InsertionSortingIteratorFactory) New(ctx context.Context, nums []int) models.SortingAlgorithmIterator {
-	it := &InsertionSortIterator{stateMsgCh: make(chan models.SortingStateMsg), cancelled: false}
-	go it.awaitSortSteps(ctx, append([]int(nil), nums...))
+	it := &InsertionSortIterator{stateMsgCh: make(chan models.SortingStateMsg), ctx: ctx}
+	go it.start(append([]int(nil), nums...))
 	return it
 }
 
-func (it *InsertionSortIterator) awaitSortSteps(ctx context.Context, nums []int) {
+func (it *InsertionSortIterator) start(nums []int) {
 	n := len(nums)
 	for i := 1; i < n; i++ {
 		select {
-		case <-ctx.Done():
-			it.cancelled = true
+		case <-it.ctx.Done():
 			close(it.stateMsgCh)
 			return
 		default:
@@ -39,8 +38,7 @@ func (it *InsertionSortIterator) awaitSortSteps(ctx context.Context, nums []int)
 			nums[j], nums[j+1] = nums[j+1], nums[j]
 
 			select {
-			case <-ctx.Done():
-				it.cancelled = true
+			case <-it.ctx.Done():
 				close(it.stateMsgCh)
 				return
 			default:
@@ -66,11 +64,7 @@ func (it *InsertionSortIterator) NextCmd() tea.Cmd {
 				Done: false,
 			}
 		} else {
-			if it.cancelled {
-				return models.SortingStateMsg{Done: false, Restart: true}
-			} else {
-				return models.SortingStateMsg{Done: true}
-			}
+			return models.SortingStateMsg{Done: true}
 		}
 	}
 }
