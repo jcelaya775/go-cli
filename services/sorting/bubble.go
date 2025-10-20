@@ -11,9 +11,9 @@ type BubbleSortIterator struct {
 	ctx        context.Context
 }
 
-type BubbleSortingIteratorFactory struct{}
+type BubbleSortIteratorFactory struct{}
 
-func (_ BubbleSortingIteratorFactory) New(ctx context.Context, nums []int) models.SortingAlgorithmIterator {
+func (_ BubbleSortIteratorFactory) New(ctx context.Context, nums []int) models.SortingAlgorithmIterator {
 	it := &BubbleSortIterator{stateMsgCh: make(chan models.SortingStateMsg), ctx: ctx}
 	go it.start(append([]int(nil), nums...))
 	return it

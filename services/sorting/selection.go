@@ -11,9 +11,9 @@ type SelectionSortIterator struct {
 	ctx        context.Context
 }
 
-type SelectionSortingIteratorFactory struct{}
+type SelectionSortIteratorFactory struct{}
 
-func (_ SelectionSortingIteratorFactory) New(ctx context.Context, nums []int) models.SortingAlgorithmIterator {
+func (_ SelectionSortIteratorFactory) New(ctx context.Context, nums []int) models.SortingAlgorithmIterator {
 	it := &SelectionSortIterator{stateMsgCh: make(chan models.SortingStateMsg), ctx: ctx}
 	go it.start(append([]int(nil), nums...))
 	return it

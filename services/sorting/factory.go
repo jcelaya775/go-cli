@@ -13,11 +13,11 @@ type IteratorFactory interface {
 func GetIteratorFactory(algorithm models.SortingAlgorithm) (IteratorFactory, error) {
 	switch algorithm {
 	case models.InsertionSort:
-		return InsertionSortingIteratorFactory{}, nil
+		return InsertionSortIteratorFactory{}, nil
 	case models.BubbleSort:
-		return BubbleSortingIteratorFactory{}, nil
+		return BubbleSortIteratorFactory{}, nil
 	case models.SelectionSort:
-		return SelectionSortingIteratorFactory{}, nil
+		return SelectionSortIteratorFactory{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported sorting algorithm: %s", algorithm)
 	}
