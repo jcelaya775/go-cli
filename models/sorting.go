@@ -32,9 +32,8 @@ type SortingAlgorithmIterator interface {
 }
 
 type SortingStateMsg struct {
-	Nums    []int
-	I       int
-	J       int
-	Done    bool
-	Restart bool
+	Nums []int
+	I    int
+	J    int
+	Done bool
 }
