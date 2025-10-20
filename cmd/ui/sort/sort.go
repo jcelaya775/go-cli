@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-// TODO: Add a SortState field instead of i, j, done fields.
-// It should also include a string representation of the current state instead of computing it in the View method.
 type Model struct {
 	sortingAlgorithm models.SortingAlgorithm
 	sortingIt        models.SortingAlgorithmIterator
@@ -133,12 +131,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+const GreenColor = "#04B575"
+const OrangeColor = "#FFA500"
+const RedColor = "#FF6B6B"
+
 func (m Model) renderNums() string {
 	s := ""
 
 	if m.done {
 		for _, num := range m.nums {
-			s += lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575")).Render(" " + strconv.Itoa(num) + " ") // Green for sorted portion
+			s += lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575")).Render(" " + strconv.Itoa(num) + " ")
 		}
 		return s
 	}
@@ -146,20 +148,20 @@ func (m Model) renderNums() string {
 	var suffixColor, prefixColor lipgloss.TerminalColor
 	switch m.sortingAlgorithm {
 	case models.BubbleSort:
-		suffixColor = lipgloss.Color("#FFA500") // Orange
-		prefixColor = lipgloss.Color("#04B575") // Green
+		suffixColor = lipgloss.Color(OrangeColor)
+		prefixColor = lipgloss.Color(GreenColor)
 	case models.InsertionSort:
-		suffixColor = lipgloss.Color("#04B575") // Green
-		prefixColor = lipgloss.Color("#FFA500") // Orange
+		suffixColor = lipgloss.Color(GreenColor)
+		prefixColor = lipgloss.Color(OrangeColor)
 	}
 
 	for i, num := range m.nums {
 		if i == m.j {
-			s += lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6B6B")).Render(" " + strconv.Itoa(num) + " ") // Red for current element
+			s += lipgloss.NewStyle().Foreground(lipgloss.Color(RedColor)).Render(" " + strconv.Itoa(num) + " ")
 		} else if i < m.i {
-			s += lipgloss.NewStyle().Foreground(suffixColor).Render(" " + strconv.Itoa(num) + " ") // Green for sorted portion
+			s += lipgloss.NewStyle().Foreground(suffixColor).Render(" " + strconv.Itoa(num) + " ")
 		} else {
-			s += lipgloss.NewStyle().Foreground(prefixColor).Render(" " + strconv.Itoa(num) + " ") // Orange for unsorted portion
+			s += lipgloss.NewStyle().Foreground(prefixColor).Render(" " + strconv.Itoa(num) + " ")
 		}
 	}
 	return s
