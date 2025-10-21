@@ -13,6 +13,7 @@ type SelectionSortIterator struct {
 
 type SelectionSortIteratorFactory struct{}
 
+// main test
 func (_ SelectionSortIteratorFactory) New(ctx context.Context, nums []int) models.SortingAlgorithmIterator {
 	it := &SelectionSortIterator{stateMsgCh: make(chan models.SortingStateMsg), ctx: ctx}
 	go it.start(append([]int(nil), nums...))
